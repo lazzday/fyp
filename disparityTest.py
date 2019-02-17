@@ -15,29 +15,10 @@ from __future__ import print_function
 import numpy as np
 import cv2 as cv
 from matplotlib import pyplot as plt
-
-ply_header = '''ply
-format ascii 1.0
-element vertex %(vert_num)d
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-end_header
-'''
+import os
 
 def nothing(x):
         pass
-
-def write_ply(fn, verts, colors):
-    verts = verts.reshape(-1, 3)
-    colors = colors.reshape(-1, 3)
-    verts = np.hstack([verts, colors])
-    with open(fn, 'wb') as f:
-        f.write((ply_header % dict(vert_num=len(verts))).encode('utf-8'))
-        np.savetxt(f, verts, fmt='%f %f %f %d %d %d ')
 
 def updateSGBM():
     # Blocksize must be an odd number, so round it down if bar is even
@@ -63,6 +44,26 @@ if __name__ == '__main__':
 #        test, frame = cap.read()
 #        print("i : "+ str(i) + "/// result: " + str(test))
 #        cap.release()
+    calib_folder_path = '/home/liam/fyp/calib/calib_values/'
+    cam_mats_left = np.load(os.path.join(calib_folder_path, 'cam_mats_left.npy'))
+    cam_mats_right = np.load(os.path.join(calib_folder_path, 'cam_mats_right.npy'))
+    disp_to_depth_mat = np.load(os.path.join(calib_folder_path, 'disp_to_depth_mat.npy'))
+    dist_coefs_left = np.load(os.path.join(calib_folder_path, 'dist_coefs_left.npy'))
+    dist_coefs_right = np.load(os.path.join(calib_folder_path, 'dist_coefs_right.npy'))
+    e_mat = np.load(os.path.join(calib_folder_path, 'e_mat.npy'))
+    f_mat = np.load(os.path.join(calib_folder_path, 'f_mat.npy'))
+    proj_mats_left = np.load(os.path.join(calib_folder_path, 'proj_mats_left.npy'))
+    proj_mats_right = np.load(os.path.join(calib_folder_path, 'proj_mats_right.npy'))
+    rectification_map_left = np.load(os.path.join(calib_folder_path, 'rectification_map_left.npy'))
+    rectification_map_right = np.load(os.path.join(calib_folder_path, 'rectification_map_right.npy'))
+    rect_trans_left = np.load(os.path.join(calib_folder_path, 'rect_trans_left.npy'))
+    rect_trans_right = np.load(os.path.join(calib_folder_path, 'rect_trans_right.npy'))
+    rot_mat = np.load(os.path.join(calib_folder_path, 'rot_mat.npy'))
+    trans_vec = np.load(os.path.join(calib_folder_path, 'trans_vec.npy'))
+    undistortion_map_left = np.load(os.path.join(calib_folder_path, 'undistortion_map_left.npy'))
+    undistortion_map_right = np.load(os.path.join(calib_folder_path, 'undistortion_map_right.npy'))
+    valid_boxes_left = np.load(os.path.join(calib_folder_path, 'valid_boxes_left.npy'))
+    valid_boxes_right = np.load(os.path.join(calib_folder_path, 'valid_boxes_right.npy'))
     
     left_capture = cv.VideoCapture(1)
     right_capture = cv.VideoCapture(0) 
@@ -74,20 +75,19 @@ if __name__ == '__main__':
     min_disp = 0
     num_disp = 160-min_disp
     
-    
 #    stereo = cv.StereoBM_create(numDisparities = 32,
 #                                blockSize = 9)
     
-    cv.namedWindow('disparity')
-    cv.createTrackbar('minDisparities', 'disparity', 0, 480, nothing)
-    cv.createTrackbar('numDisparities', 'disparity', 1, 20, nothing)
-    cv.createTrackbar('blockSize', 'disparity', 1, 31, nothing)
-    cv.createTrackbar('P1', 'disparity', 0, 480, nothing)
-    cv.createTrackbar('P2', 'disparity', 0, 480, nothing)
-    cv.createTrackbar('disp12MaxDiff', 'disparity', 1, 100, nothing)
-    cv.createTrackbar('uniquenessRatio', 'disparity', 0, 20, nothing)
-    cv.createTrackbar('speckleWindowSize', 'disparity', 50, 200, nothing)
-    cv.createTrackbar('speckleRange', 'disparity', 0, 16, nothing)
+#    cv.namedWindow('disparity')
+#    cv.createTrackbar('minDisparities', 'disparity', 0, 480, nothing)
+#    cv.createTrackbar('numDisparities', 'disparity', 1, 20, nothing)
+#    cv.createTrackbar('blockSize', 'disparity', 1, 31, nothing)
+#    cv.createTrackbar('P1', 'disparity', 0, 480, nothing)
+#    cv.createTrackbar('P2', 'disparity', 0, 480, nothing)
+#    cv.createTrackbar('disp12MaxDiff', 'disparity', 1, 100, nothing)
+#    cv.createTrackbar('uniquenessRatio', 'disparity', 0, 20, nothing)
+#    cv.createTrackbar('speckleWindowSize', 'disparity', 50, 200, nothing)
+#    cv.createTrackbar('speckleRange', 'disparity', 0, 16, nothing)
     
     stereo = cv.StereoSGBM_create(minDisparity = min_disp,
                 numDisparities = num_disp,
@@ -106,13 +106,38 @@ if __name__ == '__main__':
             
         if(ret1 & ret2):
             
-            updateSGBM()
 
-            cv.imshow('left', imgL)
-            cv.imshow('right', imgR)
-                  
-            disparity = stereo.compute(imgL, imgR)
-            cv.imshow('disparity', disparity)
+            
+            imgL = np.float32(imgL)
+            imgR = np.float32(imgR)
+            
+            undistorted_left = np.reshape(imgL, (-1,1,2))
+            undistorted_right = np.reshape(imgR, (-1,1,2))
+            
+            undistorted_left = cv.undistortPoints(src=undistorted_left,
+                               cameraMatrix=cam_mats_left, 
+                               distCoeffs=dist_coefs_left,
+                               R=rect_trans_left,
+                               P=proj_mats_left)
+            undistorted_right = cv.undistortPoints(src=undistorted_right, 
+                               cameraMatrix=cam_mats_right, 
+                               distCoeffs=dist_coefs_right,
+                               R=rect_trans_right,
+                               P=proj_mats_right)
+            
+##            
+#            updateSGBM()
+            
+            undistorted_left = np.reshape(undistorted_left, imgL.shape)
+            undistorted_right = np.reshape(undistorted_right, imgR.shape)
+
+            cv.imshow('left', undistorted_left)
+            cv.imshow('right', undistorted_right)
+#            concat_imgLR = cv.hconcat([undistorted_left, undistorted_right])
+#            cv.imshow("left&right", concat_imgLR)
+#                  
+#            disparity = stereo.compute(imgL, imgR)
+#            cv.imshow('disparity', disparity)
             
             if cv.waitKey(1)  & 0xFF == ord('q'):
                 break
