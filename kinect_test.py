@@ -3,7 +3,11 @@ import freenect
 import cv2 as cv
 import numpy as np
 from collections import deque
+import os
 import imutils
+from configparser import ConfigParser
+
+
 
  
 #function to get RGB image from kinect
@@ -25,6 +29,30 @@ def calculate_depth2RGB_offset(x, y):
     ay = (((int(y) + 30 - ys2) * 240) >> 8) + ys2
     return ax, ay
 
+# Function to read and parse calibration .ini file
+def read_calib_file():
+    # Open the calibration file
+    config = ConfigParser()
+    current_dir = os.path.dirname(__file__)
+    rel_path = os.path.join(current_dir, "calib/kinect_calib_values/calib.ini")
+    config.read(rel_path)
+    
+    # Parse the Depth Camera intrinsics
+    depth_cx = config.getfloat('CAMERA_PARAMS_LEFT', 'cx')
+    depth_cy = config.getfloat('CAMERA_PARAMS_LEFT', 'cy')
+    depth_fx = config.getfloat('CAMERA_PARAMS_LEFT', 'fx')
+    depth_fy = config.getfloat('CAMERA_PARAMS_LEFT', 'fy')
+    depth_dist = config.get('CAMER_PARAMS_LEFT', 'dist')
+    
+    print(depth_cx)
+    print(depth_cy)
+    print(depth_dist)
+    return
+    
+    
+    
+    config.read('kinect_calib_values')
+
 #def get_skeleton():
 #    array,_ = freenect.
  
@@ -38,6 +66,7 @@ if __name__ == "__main__":
     # Initialize list of tracked points
     pts = deque(maxlen=64)
     
+    read_calib_file()
     
     while 1:
         # Get RGB video frame
