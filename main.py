@@ -6,7 +6,7 @@ from collections import deque
 import imutils
 from calibReader import CalibReader
 import time
-from flightPlotter import FlightPlotter
+from flight import RecordedPoint, RecordedFlight
  
 
 #function to get RGB image from kinect
@@ -70,13 +70,13 @@ def remap_frame(ir_frame, rgb_frame, ir_map_x, ir_map_y, rgb_map_x, rgb_map_y):
  
 if __name__ == "__main__":
     
-    flight_plotter = FlightPlotter()
     
     # Set green thresholds in HSV
     greenLower = (29, 86, 6)
     greenUpper = (64, 255, 255)
     # Initialize list of tracked points
     pts = deque(maxlen=64)
+    recorded_flight = RecordedFlight()
     
     # Parse the calib.ini file and load into stereo rectifier
     rel_path = "/home/liam/fyp/calib/kinect_calib_values/calib.ini"
@@ -93,15 +93,22 @@ if __name__ == "__main__":
                                                          translation_vector, 
                                                          rotation_matrix)
     
-    
+    # Start timer for velocity calculations and framerate calculation
     start_time = get_time_millis()
-
+    frames_captured = 0
+    
+    # Booleans to determine successful projectile capture
+    projectile_in_view = False
+    flight_recorded = False
     
     while True:
+        
         # Get RGB video frame
         frame = get_video()
         # Get Depth Sensor frame
         depth = get_depth()
+        
+        frames_captured += 1
         
         # Blur frame and convert to HSV color space
         blurred = cv.GaussianBlur(frame, (11, 11), 0)
@@ -119,7 +126,6 @@ if __name__ == "__main__":
         
         # Center of ball
         ballCenter = None
-        
         # At least one contour is found
         if len(contours) > 0:
             # Find largest contour and compute enclosing circle and centroid
@@ -129,7 +135,7 @@ if __name__ == "__main__":
             center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
             
             # Radius meets a minimum size
-            if radius > 10:
+            if radius > 10:     
                 # Draw circle around the ball
                 cv.circle(frame, (int(x), int(y)), int(radius),
                           (0, 255, 255), 2)
@@ -137,33 +143,24 @@ if __name__ == "__main__":
                           (0, 255, 255), 2)
                 # Draw the center point of the ball
                 cv.circle(frame, center, 5, (0, 0, 255), -1)
-#                cv.circle(depth, center, 5, (0, 0, 255), -1)
                 
                 depthValue = depth.item(int(y), int(x))
-                point_3d = center + (depthValue, )
-                
-                
-                if int(x) >= 40:
-                    pts.append(point_3d)
-                    print(point_3d)
-                    if int(x) >= 600:
-                        break
-                    
-                
-#                t = get_time_millis() - start_time
-#                
-#                # when ball crosses thresholds
-#                if int(x) == 80 | int(x) == 320 | int(x) == 560:
-#                    # Save the location and the time to tracked points queue
-#                    pts.appendleft((center, depthValue, t))
-#                    print("Point " + center + ", " + depthValue + " added to pts")
-#                    if len(pts) == 3:
-#                        flight_recorded = True
-#                        print("Flight recorded")
-            
+                point_time = get_time_millis() - start_time
+                point = RecordedPoint(int(x), int(y), depthValue, point_time)
+                if(int(x) > 20):
+                    recorded_flight.addPoint(point)
+                    projectile_in_view = True
+                    flight_recorded = True
+            else:
+                projectile_in_view = False
+
+        # When flight is captured successfully
+        if (projectile_in_view == False) & (flight_recorded == True):
+            print("Projectile flight captured successfully")
+            break
         
         cv.imshow('RGB image',frame)
-        #display depth image
+        # display depth image
         depthImage = depth.astype(np.uint8)
         cv.imshow('Depth image', depthImage)
  
@@ -171,8 +168,16 @@ if __name__ == "__main__":
         k = cv.waitKey(1) & 0xFF
         if k == ord("q"):
             break
+    # While loop is broken  
     cv.destroyAllWindows()
-    flight_plotter.plotFlight(pts)
-        
+    total_time = (get_time_millis() - start_time) / 1000
+    fps = int(frames_captured / total_time)
+    print("Points captured:", len(recorded_flight.points))
+    print("Frames per second:", fps)
+    recorded_flight.smooth()
+    recorded_flight.relate_to_target(1340, 1830, 0, 1230)
+    recorded_flight.plot()
+    recorded_flight.calculate_flight_data()
     
+
     

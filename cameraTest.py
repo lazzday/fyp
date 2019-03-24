@@ -44,6 +44,7 @@ if __name__ == "__main__":
         cv.line(frame, (0, 40), (640, 40), color=(0,0,255), thickness=2)
         cv.line(frame, (0, 440), (640, 440), color=(0,0,255), thickness=2)
         
+        
 #        cv.line(depth, (40, 0), (40, 480), color=(0,0,255), thickness=2)
 #        cv.line(depth, (600, 0), (600, 480), color=(0,0,255), thickness=2)
         
