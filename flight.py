@@ -51,6 +51,8 @@ class RecordedFlight:
         self.points = usable_pts
         
     def relate_to_target(self, camera_height, target_x, target_y, target_z):
+        # Function to convert point coordinates to real-world distances,
+        # relative to the target area.
         a = 0.00173667 # The focal length of kinect camera
         for p in self.points:
             p.x = -target_x + int((p.x - 320) * a * p.z)
@@ -65,14 +67,6 @@ class RecordedFlight:
             p1 = self.points[i]
             p2 = self.points[i+1]
             
-            # Convert coordinates from pixels to real-world measurements (mm)
-#            a = 0.00173667 # The focal length of kinect camera
-#            camera_height = 1340 # Camera distance from the ground (mm)
-#            
-#            x1 = int((p1.x - 320) * a * p1.z)
-#            x2 = int((p2.x - 320) * a * p2.z)  
-#            y1 = int((p1.y - 240) * a * p1.z) + camera_height
-#            y2 = int((p2.y - 240) * a * p2.z) + camera_height
             x1 = p1.x
             x2 = p2.x
             y1 = p1.y
