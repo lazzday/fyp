@@ -8,12 +8,12 @@ import os
 class Animation:
 
     def __init__(self):
+
         self._running = True
         self._display_surf = None
         self.size = self.width, self.height = 800, 800
-
         self.CLOCK = pygame.time.Clock()
-        self.FPS = 60
+        self.FPS = 100
         # List of usable sprite sheets and sizes
         self.sprites = [("salamence_sprite.png", 8, 8),
                         ("blastoise_sprite.png", 13, 5),
@@ -46,7 +46,6 @@ class Animation:
         pass
 
     def on_render(self):
-
         self.sprite.draw(self._display_surf, self.spriteIndex % self.sprite.totalCellCount, self.size[0] / 2,
                          self.size[1] / 2)
         pygame.display.update()
@@ -54,12 +53,14 @@ class Animation:
         self.CLOCK.tick(self.FPS)
         self._display_surf.blit(self.bg, (0, 0))
 
+
     def on_cleanup(self):
         pygame.quit()
 
     def on_execute(self):
         if not self.on_init():
-            self._running = False
+            print("here")
+            # self._running = False
 
         while self._running:
             for event in pygame.event.get():

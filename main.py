@@ -7,6 +7,7 @@ import imutils
 from calibReader import CalibReader
 import time
 from flight import RecordedPoint, RecordedFlight
+from utils import FrameSave
 
 
 # function to get RGB image from kinect
@@ -107,6 +108,10 @@ if __name__ == "__main__":
     projectile_in_view = False
     flight_recorded = False
 
+    # Clear the capturedFrames folder
+    FrameSave.clear_capture_folder()
+    frame_count = 0
+
     while True:
 
         # When flight is captured successfully
@@ -117,9 +122,6 @@ if __name__ == "__main__":
         frame = get_video()
         # Get Depth Sensor frame
         depth = get_depth()
-
-
-
 
         frames_captured += 1
 
@@ -164,6 +166,9 @@ if __name__ == "__main__":
                 recorded_flight.add_point(point)
                 projectile_in_view = True
                 flight_recorded = True
+                # Save frame to folder
+                FrameSave.save_frame(frame, depth, frame_count)
+                frame_count += 1
         else:
             projectile_in_view = False
 

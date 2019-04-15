@@ -21,7 +21,7 @@ class RecordedPoint:
         self.z = z_coord
         self.timestamp = timestamp
 
-    def relate_to_target(self, camera_height=1340, target_x=1830, target_y=0, target_z=1230):
+    def relate_to_target(self, camera_height=1340, target_x=1940, target_y=0, target_z=1225):
         # Function to convert point coordinates to real-world distances,
         # relative to the target area.
         a = 0.00173667  # The focal length of kinect camera
