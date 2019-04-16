@@ -8,6 +8,7 @@ from calibReader import CalibReader
 import time
 from flight import RecordedPoint, RecordedFlight
 from utils import FrameSave
+from statistics import mean
 
 
 # function to get RGB image from kinect
@@ -16,7 +17,8 @@ def get_video():
     # Crop to usable space:
     array = array[60:480, 40:600]
     array = cv.cvtColor(array, cv.COLOR_RGB2BGR)
-    return array
+    latency_start = start_time - get_time_millis()
+    return array, latency_start
 
 
 # function to get depth image from kinect
@@ -24,7 +26,8 @@ def get_depth():
     array, _ = freenect.sync_get_depth(format=freenect.DEPTH_REGISTERED)
     # Crop to usable space:
     array = array[60:480, 40:600]
-    return array
+    latency_end = start_time - get_time_millis()
+    return array, latency_end
 
 
 # Function to compute stereo rectification maps
@@ -58,6 +61,10 @@ def compute_rect_maps(ir_mat, ir_dist, rgb_mat, rgb_dist, trans_vec, rot_mat):
     return ir_map_x, ir_map_y, rgb_map_x, rgb_map_y
 
 
+# Variable for tracking the latency between rgb and depth captures
+avg_latency = list()
+
+
 # Function to get current time in millseconds (for timers)
 def get_time_millis():
     return int(round(time.time() * 1000))
@@ -81,6 +88,8 @@ if __name__ == "__main__":
     # Set green thresholds in HSV
     greenLower = (29, 86, 6)
     greenUpper = (64, 255, 255)
+    orangeLower = (0, 200, 150)
+    orangeUpper = (20, 255, 255)
     # Initialize list of tracked points
     pts = deque(maxlen=64)
     recorded_flight = RecordedFlight()
@@ -88,17 +97,17 @@ if __name__ == "__main__":
     # Parse the calib.ini file and load into stereo rectifier
     rel_path = "/home/liam/fyp/calib/kinect_calib_values/calib.ini"
 
-    calib_reader = CalibReader(rel_path)
-    ir_camera_mat, ir_dist_coeffs = calib_reader.get_IR_calib()
-    rgb_camera_mat, rgb_dist_coeffs = calib_reader.get_RGB_calib()
-    translation_vector, rotation_matrix = calib_reader.get_stereo_calib()
-
-    irMapX, irMapY, rgbMapX, rgbMapY = compute_rect_maps(ir_camera_mat,
-                                                         ir_dist_coeffs,
-                                                         rgb_camera_mat,
-                                                         rgb_dist_coeffs,
-                                                         translation_vector,
-                                                         rotation_matrix)
+    # calib_reader = CalibReader(rel_path)
+    # ir_camera_mat, ir_dist_coeffs = calib_reader.get_IR_calib()
+    # rgb_camera_mat, rgb_dist_coeffs = calib_reader.get_RGB_calib()
+    # translation_vector, rotation_matrix = calib_reader.get_stereo_calib()
+    #
+    # irMapX, irMapY, rgbMapX, rgbMapY = compute_rect_maps(ir_camera_mat,
+    #                                                      ir_dist_coeffs,
+    #                                                      rgb_camera_mat,
+    #                                                      rgb_dist_coeffs,
+    #                                                      translation_vector,
+    #                                                      rotation_matrix)
 
     # Start timer for velocity calculations and framerate calculation
     start_time = get_time_millis()
@@ -119,9 +128,10 @@ if __name__ == "__main__":
             print("Projectile flight captured successfully")
             break
         # Get RGB video frame
-        frame = get_video()
+        frame, latency_start = get_video()
         # Get Depth Sensor frame
-        depth = get_depth()
+        depth, latency_end = get_depth()
+        avg_latency.append(latency_end - latency_start)
 
         frames_captured += 1
 
@@ -130,7 +140,7 @@ if __name__ == "__main__":
         hsv = cv.cvtColor(blurred, cv.COLOR_BGR2HSV)
 
         # Create mask for green/yellow color of ball
-        mask = cv.inRange(hsv, greenLower, greenUpper)
+        mask = cv.inRange(hsv, orangeLower, orangeUpper)
         mask = cv.erode(mask, None, iterations=2)
         mask = cv.dilate(mask, None, iterations=2)
 
@@ -191,4 +201,6 @@ if __name__ == "__main__":
     recorded_flight.plot()
     recorded_flight.calculate_flight_data()
     print("Horizontal Velocities:", recorded_flight.h_velocity_at_points)
+
+    print("Average Latency between RGB - Depth: ", np.mean(avg_latency))
 #    print("Average Horizontal Velocity:", np.mean(recorded_flight.h_velocity_at_points))

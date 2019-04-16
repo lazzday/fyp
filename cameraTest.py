@@ -24,17 +24,36 @@ def get_depth():
     return array
 
 
+def nothing(x):
+    pass
+
+
+# cv.namedWindow("mask")
+# cv.createTrackbar("Hue", "mask", 0, 180, nothing)
+# cv.createTrackbar("Saturation", "mask", 0, 255, nothing)
+# cv.createTrackbar("Value", "mask", 0, 255, nothing)
+
+
 if __name__ == "__main__":
     greenLower = (29, 86, 6)
     greenUpper = (64, 255, 255)
+    orangeLower = (165, 200, 180)
+    orangeUpper = (189, 255, 255)
+    # [ -5 216 163] [ 15 236 243]
+    # [-10 173 203] [ 10 193 283]
+    # [169 212 191] [189 232 271]
+
     while True:
+        # orangeUpper = (cv.getTrackbarPos("Hue", "mask"),
+        #                cv.getTrackbarPos("Saturation", "mask"),
+        #                cv.getTrackbarPos("Value", "mask"))
         frame = get_video()
         depth = get_depth()
 
         # Blur frame and convert to HSV color space
         blurred = cv.GaussianBlur(frame, (11, 11), 0)
         hsv = cv.cvtColor(blurred, cv.COLOR_BGR2HSV)
-        mask = cv.inRange(hsv, greenLower, greenUpper)
+        mask = cv.inRange(hsv, orangeLower, orangeUpper)
         mask = cv.erode(mask, None, iterations=2)
         mask = cv.dilate(mask, None, iterations=2)
 
@@ -44,7 +63,7 @@ if __name__ == "__main__":
         cv.line(frame, (0, 440), (640, 440), color=(0, 0, 255), thickness=2)
 
         cv.imshow('RGB image', frame)
-        cv.imshow('Mask', mask)
+        cv.imshow('mask', mask)
         # display depth image
         depthImage = depth.astype(np.uint8)
         cv.line(depthImage, (40, 0), (40, 480), color=(0, 0, 255), thickness=2)
@@ -63,5 +82,8 @@ if __name__ == "__main__":
         k = cv.waitKey(1) & 0xFF
         if k == ord("q"):
             break
+        elif k == ord("p"):
+            print("Capturing image...")
+            cv.imwrite("testImage.jpg", frame)
 
 cv.destroyAllWindows()
