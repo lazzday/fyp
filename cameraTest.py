@@ -7,6 +7,7 @@ Red lines show the 3d-point recording thresholds
 
 import freenect
 import cv2 as cv
+import imutils
 import numpy as np
 
 
@@ -19,7 +20,7 @@ def get_video():
 
 # function to get depth image from kinect
 def get_depth():
-    array, _ = freenect.sync_get_depth(format=freenect.DEPTH_REGISTERED)
+    array, _ = freenect.sync_get_depth(format=freenect.DEPTH_MM)
     #
     return array
 
@@ -43,39 +44,73 @@ if __name__ == "__main__":
     # [-10 173 203] [ 10 193 283]
     # [169 212 191] [189 232 271]
 
+    fgbg = cv.createBackgroundSubtractorMOG2()
+
+    startup_counter = 0
+
+    while startup_counter < 400:
+        frame = get_video()
+        depth = get_depth()
+        startup_counter += 1
+        print(startup_counter)
+
     while True:
         # orangeUpper = (cv.getTrackbarPos("Hue", "mask"),
         #                cv.getTrackbarPos("Saturation", "mask"),
         #                cv.getTrackbarPos("Value", "mask"))
-        frame = get_video()
+        #frame = get_video()
         depth = get_depth()
 
         # Blur frame and convert to HSV color space
-        blurred = cv.GaussianBlur(frame, (11, 11), 0)
-        hsv = cv.cvtColor(blurred, cv.COLOR_BGR2HSV)
-        mask = cv.inRange(hsv, orangeLower, orangeUpper)
-        mask = cv.erode(mask, None, iterations=2)
-        mask = cv.dilate(mask, None, iterations=2)
+        # blurred = cv.GaussianBlur(frame, (11, 11), 0)
+        # hsv = cv.cvtColor(blurred, cv.COLOR_BGR2HSV)
+        # mask = cv.inRange(hsv, orangeLower, orangeUpper)
+        # mask = cv.erode(mask, None, iterations=2)
+        # mask = cv.dilate(mask, None, iterations=2)
 
-        cv.line(frame, (40, 0), (40, 480), color=(0, 0, 255), thickness=2)
-        cv.line(frame, (600, 0), (600, 480), color=(0, 0, 255), thickness=2)
-        cv.line(frame, (0, 60), (640, 60), color=(0, 0, 255), thickness=2)
-        cv.line(frame, (0, 440), (640, 440), color=(0, 0, 255), thickness=2)
-
-        cv.imshow('RGB image', frame)
-        cv.imshow('mask', mask)
+        #
+        # cv.imshow('RGB image', frame)
+        # cv.imshow('mask', mask)
         # display depth image
-        depthImage = depth.astype(np.uint8)
-        cv.line(depthImage, (40, 0), (40, 480), color=(0, 0, 255), thickness=2)
-        cv.line(depthImage, (600, 0), (600, 480), color=(0, 0, 255), thickness=2)
-        cv.line(depthImage, (0, 60), (640, 60), color=(0, 0, 255), thickness=2)
-        cv.line(depthImage, (0, 440), (640, 440), color=(0, 0, 255), thickness=2)
-        cv.imshow('Depth image', depthImage)
+        # cv.line(depthImage, (40, 0), (40, 480), color=(0, 0, 255), thickness=2)
+        # cv.line(depthImage, (600, 0), (600, 480), color=(0, 0, 255), thickness=2)
+        # cv.line(depthImage, (0, 60), (640, 60), color=(0, 0, 255), thickness=2)
+        # cv.line(depthImage, (0, 440), (640, 440), color=(0, 0, 255), thickness=2)
+        # cv.imshow('Depth image', depthImage)
 
-        crop_frame = frame[60:480, 40:600]
-        crop_depth = depthImage[60:480, 40:600]
-        cv.imshow('crop', crop_frame)
-        cv.imshow('crop depth', crop_depth)
+        # crop_frame = frame[60:480, 40:600]
+        depth = depth[60:480, 40:600]
+        depth = cv.GaussianBlur(depth, (11, 11), 0)
+        # depth = cv.erode(depth, None, iterations=2)
+        # depth = cv.dilate(depth, None, iterations=2)
+
+        # apply background substraction
+        fgmask = fgbg.apply(depth)
+        contours = cv.findContours(fgmask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(contours)
+
+        # looping for contours
+        for c in contours:
+            if cv.contourArea(c) < 1000:
+                continue
+
+            # get bounding box from countour
+            # (x, y, w, h) = cv.boundingRect(c)
+            ((x, y), radius) = cv.minEnclosingCircle(c)
+            M = cv.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+            # draw bounding box
+            #     cv.rectangle(depth, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv.circle(depth, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+
+            print("depth:", depth[center[1], center[0]])
+
+
+        depthImage = depth.astype(np.uint8)
+        # cv.imshow('crop', crop_frame)
+        cv.imshow('depth', depthImage)
+        cv.imshow('Foreground & Background Mask', fgmask)
 
 
         # quit program when 'esc' key is pressed
