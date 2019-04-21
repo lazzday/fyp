@@ -44,7 +44,8 @@ class RecordedFlight:
     def add_point(self, p):
         self.points.append(p)
 
-    def predict_trajectory(self):
+    # Function to define complete list of points along predicted trajectory
+    def generate_trajectory_points(self):
         z_val = np.array([p.z for p in self.points])
         x_val = np.array([p.x for p in self.points])
         y_val = np.array([p.y for p in self.points])
@@ -56,9 +57,9 @@ class RecordedFlight:
 
         # Fit to a polynomial function (2nd degree = Quadratic)
         polynomial_coeffs = np.polyfit(x_val, y_val, 2)
-        print("Polynomial Function: y = {} + {}x + {}x^2".format(polynomial_coeffs[0],
-              polynomial_coeffs[1],
-              polynomial_coeffs[2]))
+        # print("Polynomial Function: y = {} + {}x + {}x^2".format(polynomial_coeffs[0],
+        #       polynomial_coeffs[1],
+        #       polynomial_coeffs[2]))
 
         # Function for the curve: y = a + bx^1 + cx^2
         def curve_function(x):
@@ -71,8 +72,34 @@ class RecordedFlight:
         for predicted_x in x_range:
             predicted_y = curve_function(predicted_x)
             predicted_z = (m * predicted_x) + b
-            print("Predicted Point:", predicted_x, predicted_y, predicted_z)
+            # print("Predicted Point:", predicted_x, predicted_y, predicted_z)
             self.trajectory.append([predicted_x, predicted_y, predicted_z])
+
+    # Function to define the last point of the trajectory, the point of impact
+    def predict_final_point(self):
+        z_val = np.array([p.z for p in self.points])
+        x_val = np.array([p.x for p in self.points])
+        y_val = np.array([p.y for p in self.points])
+
+        # Use regression to find the best fit slope
+        m = (((np.mean(x_val) * np.mean(z_val)) - np.mean(x_val * z_val)) /
+             ((np.mean(x_val) * np.mean(x_val)) - np.mean(x_val * x_val)))
+        b = np.mean(z_val) - m * np.mean(x_val)
+
+        # Fit to a polynomial function (2nd degree = Quadratic)
+        polynomial_coeffs = np.polyfit(x_val, y_val, 2)
+        # print("Polynomial Function: y = {} + {}x + {}x^2".format(polynomial_coeffs[0],
+        #                                                          polynomial_coeffs[1],
+        #                                                          polynomial_coeffs[2]))
+
+        # Function for the curve: y = a + bx^1 + cx^2
+        def curve_function(x):
+            y = polynomial_coeffs[2] + polynomial_coeffs[1] * x + polynomial_coeffs[0] * math.pow(x, 2)
+            return y
+
+        x_at_target = 0
+        self.predicted_point_of_impact = [x_at_target, curve_function(x_at_target), (m * x_at_target) + b]
+        return [x_at_target, curve_function(x_at_target), (m * x_at_target) + b]
 
     def plot(self):
         # Function to plot the flight on a 3D graph
@@ -90,6 +117,10 @@ class RecordedFlight:
         ax.scatter(predicted_x_val, predicted_y_val, predicted_z_val)
 
         ax.plot([0.], [1000.], [0.], marker='X', markersize=10)
+        ax.plot([self.predicted_point_of_impact[0]],
+                [self.predicted_point_of_impact[1]],
+                [self.predicted_point_of_impact[2]],
+                marker='X', markersize=10)
         ax.set_xlabel("X (meters)")
         ax.set_ylabel("Y (meters)")
         ax.set_zlabel("Z (meters)")

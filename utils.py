@@ -1,5 +1,5 @@
 '''
-Utility functions and classes for main.py
+Utility functions and classes for projectileDetector.py
 '''
 
 import os
