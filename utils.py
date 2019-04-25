@@ -10,6 +10,7 @@ import cv2 as cv
 # Static class for handling saved frames as images
 class FrameSave:
 
+
     @staticmethod
     def clear_capture_folder():
         folder = 'capturedFrames'
@@ -37,8 +38,28 @@ class FrameSave:
             count += 1
 
     @staticmethod
-    def generate_flight_mask_image(mask_frames):
+    def generate_flight_mask_image(mask_frames, saveCount):
         overlay_image = mask_frames[0]
         for f in mask_frames:
             overlay_image = cv.add(overlay_image, f)
-        cv.imwrite(os.path.join("capturedFrames", "flight.jpg"), overlay_image)
+        cv.imwrite(os.path.join("images/flightMasks", "throw{}.jpg".format(saveCount)), overlay_image)
+
+    @staticmethod
+    def clear_images():
+        folder = 'images/plots'
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
+
+        folder = 'images/flightMasks'
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)

@@ -21,6 +21,8 @@ def get_video():
 # function to get depth image from kinect
 def get_depth():
     array, _ = freenect.sync_get_depth(format=freenect.DEPTH_MM)
+    # array, _ = freenect.sync_get_depth()
+
     #
     return array
 
@@ -44,15 +46,16 @@ if __name__ == "__main__":
     # [-10 173 203] [ 10 193 283]
     # [169 212 191] [189 232 271]
 
-    fgbg = cv.createBackgroundSubtractorMOG2()
+    fgbg = cv.createBackgroundSubtractorMOG2(varThreshold=144)
+    # fgbg = cv.createBackgroundSubtractorKNN()
 
-    startup_counter = 0
-
-    while startup_counter < 400:
-        frame = get_video()
-        depth = get_depth()
-        startup_counter += 1
-        print(startup_counter)
+    # startup_counter = 0
+    #
+    # while startup_counter < 400:
+    #     frame = get_video()
+    #     depth = get_depth()
+    #     startup_counter += 1
+    #     print(startup_counter)
 
     while True:
         # orangeUpper = (cv.getTrackbarPos("Hue", "mask"),
@@ -79,8 +82,8 @@ if __name__ == "__main__":
         # cv.imshow('Depth image', depthImage)
 
         # crop_frame = frame[60:480, 40:600]
-        depth = depth[60:480, 40:600]
-        depth = cv.GaussianBlur(depth, (11, 11), 0)
+        # depth = depth[60:480, 40:600]
+        #depth = cv.GaussianBlur(depth, (11, 11), 0)
         # depth = cv.erode(depth, None, iterations=2)
         # depth = cv.dilate(depth, None, iterations=2)
 
@@ -106,12 +109,10 @@ if __name__ == "__main__":
 
             print("depth:", depth[center[1], center[0]])
 
-
         depthImage = depth.astype(np.uint8)
         # cv.imshow('crop', crop_frame)
         cv.imshow('depth', depthImage)
         cv.imshow('Foreground & Background Mask', fgmask)
-
 
         # quit program when 'esc' key is pressed
         k = cv.waitKey(1) & 0xFF

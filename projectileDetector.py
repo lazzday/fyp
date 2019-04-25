@@ -12,9 +12,21 @@ import animation
 
 class ProjectileDetector(multiprocessing.Process):
 
-    def __init__(self, the_state, queue):
+    def __init__(self, the_state, queue,
+                 CAMERA_HEIGHT,
+                 CAMERA2TARGET_X,
+                 CAMERA2TARGET_Z,
+                 TARGET_CENTER_HEIGHT):
         super(ProjectileDetector, self).__init__()
         self.queue = queue
+
+        self.CAMERA_HEIGHT = CAMERA_HEIGHT
+        self.CAMERA2TARGET_X = CAMERA2TARGET_X
+        self.CAMERA2TARGET_Z = CAMERA2TARGET_Z
+        self.TARGET_CENTER_HEIGHT = TARGET_CENTER_HEIGHT
+
+        FrameSave.clear_images()
+
 
     # function to get RGB image from kinect
     def get_video(self):
@@ -25,33 +37,17 @@ class ProjectileDetector(multiprocessing.Process):
         latency_start = start_time - get_time_millis()
         return array, latency_start
 
-
     # function to get depth image from kinect
     def get_depth(self):
         array, _ = freenect.sync_get_depth(format=freenect.DEPTH_MM)
-        # array, _ = freenect.sync_get_depth(format=freenect.DEPTH_REGISTERED)
-
-        # Crop to usable space:
-        # array = array[60:480, 40:600]
         return array
-
-
-    # Variable for tracking the latency between rgb and depth captures
-    avg_latency = list()
-
 
     # Function to get current time in millseconds (for timers)
     def get_time_millis(self):
         return int(round(time.time() * 1000))
 
-
     # if __name__ == "__main__":
     def run(self):
-        # Set green thresholds in HSV
-        greenLower = (29, 86, 6)
-        greenUpper = (64, 255, 255)
-        orangeLower = (0, 200, 150)
-        orangeUpper = (20, 255, 255)
         # Initialize list of tracked points
         pts = deque(maxlen=64)
         recorded_flight = RecordedFlight()
@@ -59,9 +55,6 @@ class ProjectileDetector(multiprocessing.Process):
         # Deque of frames to save as images
         images_to_save = deque(maxlen=64)
         mask_frames = deque(maxlen=64)
-
-        # Parse the calib.ini file and load into stereo rectifier
-        rel_path = "/home/liam/fyp/calib/kinect_calib_values/calib.ini"
 
         # Start timer for velocity calculations and framerate calculation
         start_time = self.get_time_millis()
@@ -71,94 +64,119 @@ class ProjectileDetector(multiprocessing.Process):
         projectile_in_view = False
         flight_recorded = False
         look_for_contours = False
+        depth_image_settled = False
 
         # Clear the capturedFrames folder
         FrameSave.clear_capture_folder()
         frame_count = 0
 
         # Background Subtraction setup
-        fgbg = cv.createBackgroundSubtractorMOG2()
+        fgbg = cv.createBackgroundSubtractorMOG2(varThreshold=144)
 
-        while True:
-
-            # When flight is captured successfully
-            if (projectile_in_view == False) & (flight_recorded == True):
-                print("Projectile flight captured successfully")
-                # images_to_save.append(depth.astype(np.uint8))
-                break
-
-            # Get Depth Sensor frame
+        # Wait until depth image has settled so no false positives are detected
+        settle_timer = self.get_time_millis()
+        print("Waiting depth image to settle...")
+        while not depth_image_settled:
             depth = self.get_depth()
+            if self.get_time_millis() - settle_timer > 30000:
+                depth_image_settled = True
+                look_for_contours = True
+                print("Ready to detect projectiles!")
+                self.queue.put("Ready")
 
-            frames_captured += 1
+        throws_detected = 0
+        # while throws_detected < 3:
+        while True:
+            projectile_in_view = False
+            flight_recorded = False
+            recorded_flight.clearup()
+            mask_frames.clear()
 
-            # Apply blur to filter out random IR noise
-            depth = cv.GaussianBlur(depth, (11, 11), 0)
+            while True:
+                # When flight is captured successfully
+                if (projectile_in_view == False) & (flight_recorded == True):
+                    print("Projectile flight captured successfully")
+                    break
 
-            # apply background substraction
-            fgmask = fgbg.apply(depth)
-            contours = cv.findContours(fgmask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-            contours = imutils.grab_contours(contours)
+                # Get Depth Sensor frame
+                depth = self.get_depth()
 
-            # Ignore the first frame it gives a false positive
-            if frames_captured < 10:
-                continue
+                frames_captured += 1
 
-            # Center of ball
-            ballCenter = None
+                # Apply blur to filter out random IR noise
+                #depth = cv.GaussianBlur(depth, (11, 11), 0)
 
-            if look_for_contours == True:
-                for c in contours:
-                    if cv.contourArea(c) < 500:
-                        continue
-                    ((x, y), radius) = cv.minEnclosingCircle(c)
-                    M = cv.moments(c)
-                    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                # apply background substraction
+                fgmask = fgbg.apply(depth)
+                contours = cv.findContours(fgmask.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                contours = imutils.grab_contours(contours)
 
-                    cv.circle(depth, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+                # Ignore the first frame it gives a false positive
+                if frames_captured < 10:
+                    continue
 
-                    depthValue = depth.item(center[1], center[0])
-                    if center[0] > depth.shape[1] - 100:
-                        projectile_in_view = False
-                        continue
-                    elif depthValue != 0:
-                        point_time = self.get_time_millis() - start_time
-                        point = RecordedPoint(center[0], center[1], depthValue, point_time)
-                        point.relate_to_target()
-                        recorded_flight.add_point(point)
-                        projectile_in_view = True
-                        flight_recorded = True
-                        # Save frame to folder
-                        images_to_save.append(depth.astype(np.uint8))
-                        mask_frames.append(fgmask)
-                        frame_count += 1
+                # Center of ball
+                ballCenter = None
 
-            # cv.imshow('RGB image', frame)
-            # display depth image
-            depthImage = depth.astype(np.uint8)
-            cv.imshow('Depth image', depthImage)
+                if look_for_contours == True:
+                    for c in contours:
+                        if cv.contourArea(c) < 1000:
+                            continue
+                        ((x, y), radius) = cv.minEnclosingCircle(c)
+                        M = cv.moments(c)
+                        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
-            # quit program when 'esc' key is pressed
+                        cv.circle(depth, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+
+                        depthValue = depth.item(center[1], center[0])
+                        if center[0] > depth.shape[1] - 100:
+                            projectile_in_view = False
+                            continue
+                        elif depthValue != 0:
+                            point_time = self.get_time_millis() - start_time
+                            point = RecordedPoint(center[0], center[1], depthValue, point_time)
+                            point.relate_to_target(self.CAMERA_HEIGHT,
+                                                   self.CAMERA2TARGET_X,
+                                                   self.TARGET_CENTER_HEIGHT,
+                                                   self.CAMERA2TARGET_Z)
+                            recorded_flight.add_point(point)
+                            projectile_in_view = True
+                            flight_recorded = True
+                            # Save frame to folder
+                            images_to_save.append(depth.astype(np.uint8))
+                            mask_frames.append(fgmask)
+                            frame_count += 1
+
+                # cv.imshow('RGB image', frame)
+                # display depth image
+
+                # depthImage = depth.astype(np.uint8)
+                # cv.imshow("depth", depthImage)
+
+                # quit program when 'esc' key is pressed
+                k = cv.waitKey(1) & 0xFF
+                if k == ord("q"):
+                    break
+
+
+        # While loop is broken
+            total_time = (self.get_time_millis() - start_time) / 1000
+            fps = int(frames_captured / total_time)
+            print("Points captured:", len(recorded_flight.points))
+            print("Frames per second:", fps)
+            point_of_impact = recorded_flight.predict_final_point(self.TARGET_CENTER_HEIGHT)
+            print("Sending to queue")
+            self.queue.put(point_of_impact)
+            recorded_flight.generate_trajectory_points()
+            # FrameSave.save_frames(images_to_save)
+            FrameSave.generate_flight_mask_image(mask_frames, throws_detected)
+            throws_detected += 1
+            recorded_flight.plot()
+
             k = cv.waitKey(1) & 0xFF
             if k == ord("q"):
                 break
-            elif k == ord(" "):
-                look_for_contours = True
-                print("Looking for objects...")
-
-        # While loop is broken
-        cv.destroyAllWindows()
-        total_time = (self.get_time_millis() - start_time) / 1000
-        fps = int(frames_captured / total_time)
-        print("Points captured:", len(recorded_flight.points))
-        print("Frames per second:", fps)
-        point_of_impact = recorded_flight.predict_final_point()
-        print("Sending to queue")
-        self.queue.put(point_of_impact)
-        recorded_flight.generate_trajectory_points()
-        FrameSave.save_frames(images_to_save)
-        FrameSave.generate_flight_mask_image(mask_frames)
-        recorded_flight.plot()
-
         # print("Average Latency between RGB - Depth: ", np.mean(avg_latency))
     #    print("Average Horizontal Velocity:", np.mean(recorded_flight.h_velocity_at_points))
+
+        cv.destroyAllWindows()

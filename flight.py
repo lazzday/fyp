@@ -7,6 +7,8 @@ Created on Sat Mar 23 19:05:09 2019
 """
 
 import math
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
@@ -22,7 +24,7 @@ class RecordedPoint:
         self.z = z_coord
         self.timestamp = timestamp
 
-    def relate_to_target(self, camera_height=1340, target_x=1940, target_y=0, target_z=1225):
+    def relate_to_target(self, camera_height, target_x, target_y, target_z):
         # Function to convert point coordinates to real-world distances,
         # relative to the target area.
         a = 0.00173667  # The focal length of kinect camera
@@ -40,6 +42,7 @@ class RecordedFlight:
     def __init__(self):
         self.points = deque(maxlen=64)
         self.trajectory = deque(maxlen=64)
+        self.plot_number = 0
 
     def add_point(self, p):
         self.points.append(p)
@@ -76,7 +79,7 @@ class RecordedFlight:
             self.trajectory.append([predicted_x, predicted_y, predicted_z])
 
     # Function to define the last point of the trajectory, the point of impact
-    def predict_final_point(self):
+    def predict_final_point(self, TARGET_CENTER_HEIGHT):
         z_val = np.array([p.z for p in self.points])
         x_val = np.array([p.x for p in self.points])
         y_val = np.array([p.y for p in self.points])
@@ -98,8 +101,9 @@ class RecordedFlight:
             return y
 
         x_at_target = 0
+        y_at_target = TARGET_CENTER_HEIGHT
         self.predicted_point_of_impact = [x_at_target, curve_function(x_at_target), (m * x_at_target) + b]
-        return [x_at_target, curve_function(x_at_target), (m * x_at_target) + b]
+        return [x_at_target, curve_function(x_at_target) - y_at_target, (m * x_at_target) + b]
 
     def plot(self):
         # Function to plot the flight on a 3D graph
@@ -116,7 +120,7 @@ class RecordedFlight:
         predicted_z_val = [p[2] for p in self.trajectory]
         ax.scatter(predicted_x_val, predicted_y_val, predicted_z_val)
 
-        ax.plot([0.], [1000.], [0.], marker='X', markersize=10)
+        # ax.plot([0.], [self.], [0.], marker='X', markersize=10)
         ax.plot([self.predicted_point_of_impact[0]],
                 [self.predicted_point_of_impact[1]],
                 [self.predicted_point_of_impact[2]],
@@ -129,5 +133,12 @@ class RecordedFlight:
         ax.set_zlim(-1250, 1250)
         # Set initial viewing angle
         ax.view_init(-90, -90)
-        plt.show()
+        # plt.show()
+        folder = "images/plots"
+        plot_name = "throw{}.png".format(self.plot_number)
+        self.plot_number += 1
+        fig.savefig(os.path.join(folder, plot_name))
 
+    def clearup(self):
+        self.points.clear()
+        self.trajectory.clear()
