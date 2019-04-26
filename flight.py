@@ -84,6 +84,7 @@ class RecordedFlight:
         z_val = np.array([p.z for p in self.points])
         x_val = np.array([p.x for p in self.points])
         y_val = np.array([p.y for p in self.points])
+        time_val = np.array([p.timestamp for p in self.points])
 
         # Use regression to find the best fit slope
         m = (((np.mean(x_val) * np.mean(z_val)) - np.mean(x_val * z_val)) /
@@ -104,7 +105,13 @@ class RecordedFlight:
         x_at_target = 0
         y_at_target = TARGET_CENTER_HEIGHT
         self.predicted_point_of_impact = [x_at_target, curve_function(x_at_target), (m * x_at_target) + b]
-        return [x_at_target, curve_function(x_at_target) - y_at_target, (m * x_at_target) + b]
+
+        # Calculate the average horizontal velocity
+        time_diff = time_val[-1] - time_val[0]
+        distance = x_val[-1] - x_val[0]
+        avg_vel = distance / time_diff
+
+        return [x_at_target, curve_function(x_at_target) - y_at_target, (m * x_at_target) + b, avg_vel]
 
     def plot(self):
         matplotlib.use('Agg')

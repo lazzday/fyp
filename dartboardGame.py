@@ -51,6 +51,7 @@ class DartboardGame(multiprocessing.Process):
         self.plot_load_delay = 0
         self.last_throw_plot = None
         self.loading_counter = 0
+        self.avg_vel = 0
 
     def on_event(self, event):
         if event.type == pygame.QUIT:
@@ -77,6 +78,7 @@ class DartboardGame(multiprocessing.Process):
                 if point_if_impact is not None:
                     print("Read from queue:", point_if_impact)
                     point_of_impact_mm = [point_if_impact[2], point_if_impact[1]]
+                    self.avg_vel = point_if_impact[3]
                     point_of_impact_coords = self.convert_distance_to_coords(point_of_impact_mm)
                     self.impact_points.append(point_of_impact_coords)
                     self.calculate_score(point_of_impact_coords)
@@ -169,12 +171,16 @@ class DartboardGame(multiprocessing.Process):
             self.score += 20
 
     def draw_score(self):
-        font = pygame.font.SysFont("comicsansms", 36)
+        font = pygame.font.SysFont("courier", 28)
         score_text = font.render("Score: {}".format(self.score), True, self.BLACK)
-        self._display_surf.blit(score_text, (self.width - 160, 20))
+        self._display_surf.blit(score_text, (self.width - 240, 20))
 
         attempts_text = font.render("Attempts: {}".format(self.attempts), True, self.BLACK)
-        self._display_surf.blit(attempts_text, (self.width - 160, 45))
+        self._display_surf.blit(attempts_text, (self.width - 240, 45))
+
+        font = pygame.font.SysFont("courier", 36)
+        velocity_text = font.render("Vel: {:.2f}m/s".format(self.avg_vel), True, self.BLACK)
+        self._display_surf.blit(velocity_text, (20, self.height-40))
 
     def draw_impact_points(self):
         for point in self.impact_points:
@@ -190,13 +196,13 @@ class DartboardGame(multiprocessing.Process):
                 try:
                     self.last_throw_plot = pygame.image.load(plot)
                     self.last_throw_plot = pygame.transform.scale(self.last_throw_plot, (int(self.width*0.45), int(self.height*0.45)))
-                    self._display_surf.blit(self.last_throw_plot, (int(self.width*0.66), int(self.height * 0.66)))
+                    self._display_surf.blit(self.last_throw_plot, (int(self.width*0.66), int(self.height * 0.63)))
                 except:
                     # Image is not available yet, do nothing
                     pass
 
     def draw_loading_screen(self):
-        # Function to draw and disply the loading screen while the game awaits
+        # Function to draw and display the loading screen while the game awaits
         # the ready command from the projectile detector
         self.loading_counter += 1
         loading_surf = pygame.Surface((self.width, self.height))
