@@ -8,7 +8,7 @@ import time
 from flight import RecordedPoint, RecordedFlight
 from utils import FrameSave
 import multiprocessing
-import animation
+
 
 class ProjectileDetector(multiprocessing.Process):
 
@@ -26,7 +26,6 @@ class ProjectileDetector(multiprocessing.Process):
         self.TARGET_CENTER_HEIGHT = TARGET_CENTER_HEIGHT
 
         FrameSave.clear_images()
-
 
     # function to get RGB image from kinect
     def get_video(self):
@@ -104,7 +103,7 @@ class ProjectileDetector(multiprocessing.Process):
                 frames_captured += 1
 
                 # Apply blur to filter out random IR noise
-                #depth = cv.GaussianBlur(depth, (11, 11), 0)
+                # depth = cv.GaussianBlur(depth, (11, 11), 0)
 
                 # apply background substraction
                 fgmask = fgbg.apply(depth)

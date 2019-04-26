@@ -48,6 +48,9 @@ class DartboardGame(multiprocessing.Process):
         self.impact_x = pygame.transform.scale(self.impact_x, (100, 100))
 
         self._display_surf.fill(self.WHITE)
+        self.plot_load_delay = 0
+        self.last_throw_plot = None
+        self.loading_counter = 0
 
     def on_event(self, event):
         if event.type == pygame.QUIT:
@@ -87,15 +90,17 @@ class DartboardGame(multiprocessing.Process):
                 # Therefor we can treat the realworld z coords as the x coords in the animation
 
     def on_render(self):
-        if self.projectile_detector_ready:
+        if not self.projectile_detector_ready:
             # Draw a green circle in the top left to indicate the projectile detector is ready
-            pygame.draw.circle(self._display_surf, self.GREEN, (50, 50), 50)
+            self.draw_loading_screen()
+        else:
+            self.draw_target()
+            self.draw_impact_points()
+            self.draw_score()
+            self.draw_plot()
 
         pygame.display.update()
         self.CLOCK.tick(self.FPS)
-        self.draw_target()
-        self.draw_impact_points()
-        self.draw_score()
 
     def on_cleanup(self):
         pygame.display.quit()
@@ -175,3 +180,45 @@ class DartboardGame(multiprocessing.Process):
         for point in self.impact_points:
             (x, y) = point
             self._display_surf.blit(self.impact_x, (x-self.impact_x.get_width() // 2, y-self.impact_x.get_height() // 2))
+
+    def draw_plot(self):
+        if self.attempts > 0:
+            current_path = os.path.dirname(__file__)
+            plots_folder = os.path.join(current_path, "images/plots")
+            plot = os.path.join(plots_folder, 'throw{}.png'.format(self.attempts-1))
+            if os.path.isfile(plot):
+                try:
+                    self.last_throw_plot = pygame.image.load(plot)
+                    self.last_throw_plot = pygame.transform.scale(self.last_throw_plot, (int(self.width*0.45), int(self.height*0.45)))
+                    self._display_surf.blit(self.last_throw_plot, (int(self.width*0.66), int(self.height * 0.66)))
+                except:
+                    # Image is not available yet, do nothing
+                    pass
+
+    def draw_loading_screen(self):
+        # Function to draw and disply the loading screen while the game awaits
+        # the ready command from the projectile detector
+        self.loading_counter += 1
+        loading_surf = pygame.Surface((self.width, self.height))
+        loading_surf.fill(self.RED)
+        font = pygame.font.SysFont("couriernew", 64)
+        title_text = font.render("Projectile Detection Demo", True, self.WHITE)
+        title_text_rect = title_text.get_rect(center=(int(self.width / 2), int(self.height / 2)))
+        font = pygame.font.SysFont("couriernew", 54)
+        loading_text = font.render("LOADING   ", True, self.BLUE)
+        if self.loading_counter < 60:
+            loading_text = font.render("LOADING   ", True, self.BLUE)
+        elif self.loading_counter < 120:
+            loading_text = font.render("LOADING.  ", True, self.BLUE)
+        elif self.loading_counter < 180:
+            loading_text = font.render("LOADING.. ", True, self.BLUE)
+        elif self.loading_counter < 240:
+            loading_text = font.render("LOADING...", True, self.BLUE)
+        else:
+            self.loading_counter = 0
+
+        loading_text_rect = loading_text.get_rect(center=(int(self.width / 2), int(self.height*0.66)))
+        loading_surf.blit(title_text, title_text_rect)
+        loading_surf.blit(loading_text, loading_text_rect)
+
+        self._display_surf.blit(loading_surf, (0, 0))

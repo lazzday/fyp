@@ -4,14 +4,12 @@ import animation
 import projectileDetector
 import dartboardGame
 
-CAMERA_HEIGHT = 1280  # The height of the camera in mm
-CAMERA2TARGET_X = 1300  # The perpendicular x distance from camera to target in mm
-CAMERA2TARGET_Z = 940  # The z (depth) distance from camera to target centerpoint in mm
+CAMERA_HEIGHT = 1240  # The height of the camera in mm
+CAMERA2TARGET_X = 1270  # The perpendicular x distance from camera to target in mm
+CAMERA2TARGET_Z = 930  # The z (depth) distance from camera to target centerpoint in mm
 TARGET_CENTER_HEIGHT = 1170  # The real-world height of the center of the target in mm
-
-SCREEN_WIDTH = 1310  # The target display width in mm
+SCREEN_WIDTH = 1300  # The target display width in mm
 SCREEN_HEIGHT = 960  # The target display width in mm
-
 
 with Manager() as manager:
     namespace = manager.Namespace()
