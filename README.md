@@ -1,9 +1,5 @@
-# fyp
+# Projectile Detection and Trajectory Prediction
+## A Final Year Project by Liam Day
+### Software & Electronic Engineering, Galway-Mayo Institute of Technology
 
-Liam Day
-Software & Electronic Engineering
-Galway-Mayo Institute of Technology
-2019
-Final Year Project
 
-Projectile Detection and Interaction

@@ -1,4 +1,9 @@
-# import the necessary modules
+'''
+Main class to handle projectile detection.
+Passes calculated point of impact to multiprocessing queue to be
+handled by interaction method.
+'''
+
 import freenect
 import cv2 as cv
 import numpy as np
@@ -8,6 +13,7 @@ import time
 from flight import RecordedPoint, RecordedFlight
 from utils import FrameSave
 import multiprocessing
+
 
 class ProjectileDetector(multiprocessing.Process):
 
@@ -81,11 +87,6 @@ class ProjectileDetector(multiprocessing.Process):
 
         throws_detected = 0
 
-        projectile_timeout = 1000
-        timeout_timer = 0
-
-
-
         while True:
             projectile_in_view = False
             flight_recorded = False
@@ -121,10 +122,8 @@ class ProjectileDetector(multiprocessing.Process):
                 if look_for_contours == True:
                     # Projectile detected
                     for c in contours:
-                        if cv.contourArea(c) < 1000:
+                        if cv.contourArea(c) < 1000 or cv.contourArea(c) > 8000:
                             continue
-
-                        # if time < timeout
 
                         ((x, y), radius) = cv.minEnclosingCircle(c)
                         M = cv.moments(c)
@@ -151,8 +150,6 @@ class ProjectileDetector(multiprocessing.Process):
                             images_to_save.append(depth.astype(np.uint8))
                             mask_frames.append(fgmask)
                             frame_count += 1
-
-                            timeout_timer = self.get_time_millis()
 
 
                 # cv.imshow('RGB image', frame)

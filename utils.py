@@ -1,5 +1,7 @@
 '''
 Utility functions and classes for projectileDetector.py
+for saving captured frames.
+
 '''
 
 import os

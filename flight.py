@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Mar 23 19:05:09 2019
-
-@author: liam
+Classes to handle recorded points of flight
+and calculate trajectory.
 """
 
 import math
@@ -15,7 +14,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
-
 
 from mpl_toolkits.mplot3d import axes3d
 
@@ -150,12 +148,11 @@ class RecordedFlight:
         ax.yaxis.set_ticklabels([])
         ax.zaxis.set_ticklabels([])
 
-
         # Set initial viewing angle
         ax.view_init(azim=270, elev=-60)
-        # plt.legend(loc='upper left')
+        plt.legend(loc='upper left')
         # plt.show()
-        pickle.dump(ax, open("plot{}.pickle".format(self.plot_number), "wb"))
+        # pickle.dump(ax, open("plot{}.pickle".format(self.plot_number), "wb"))
         folder = "images/plots"
         plot_name = "throw{}.png".format(self.plot_number)
 

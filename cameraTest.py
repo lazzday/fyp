@@ -10,7 +10,6 @@ import cv2 as cv
 import imutils
 import numpy as np
 
-
 # function to get RGB image from kinect
 def get_video():
     array, _ = freenect.sync_get_video()
@@ -102,7 +101,5 @@ if __name__ == "__main__":
 
 
 cv.destroyAllWindows()
-out.release()
-out2.release()
-out3.release()
+
 
