@@ -31,61 +31,28 @@ def nothing(x):
     pass
 
 
-# cv.namedWindow("mask")
-# cv.createTrackbar("Hue", "mask", 0, 180, nothing)
-# cv.createTrackbar("Saturation", "mask", 0, 255, nothing)
-# cv.createTrackbar("Value", "mask", 0, 255, nothing)
-
-
 if __name__ == "__main__":
-    greenLower = (29, 86, 6)
-    greenUpper = (64, 255, 255)
-    orangeLower = (165, 200, 180)
-    orangeUpper = (189, 255, 255)
-    # [ -5 216 163] [ 15 236 243]
-    # [-10 173 203] [ 10 193 283]
-    # [169 212 191] [189 232 271]
+
 
     fgbg = cv.createBackgroundSubtractorMOG2(varThreshold=144)
-    # fgbg = cv.createBackgroundSubtractorKNN()
 
-    # startup_counter = 0
-    #
-    # while startup_counter < 400:
-    #     frame = get_video()
-    #     depth = get_depth()
-    #     startup_counter += 1
-    #     print(startup_counter)
+    depth = get_depth()
+    depthImage = depth.astype(np.uint8)
+
+    size = (depthImage.shape[1], depthImage.shape[0])
+    print(depthImage.shape)
+
+    # fourcc = cv.VideoWriter_fourcc(*'XVID')
+    # out = cv.VideoWriter('testDepthFlight.avi', fourcc, 20.0, size)
+    # out2 = cv.VideoWriter('testFGBGFlight.avi', fourcc, 20.0, size)
+    # out3 = cv.VideoWriter('testRGBFlight.avi', fourcc, 20.0, size)
+
+
 
     while True:
-        # orangeUpper = (cv.getTrackbarPos("Hue", "mask"),
-        #                cv.getTrackbarPos("Saturation", "mask"),
-        #                cv.getTrackbarPos("Value", "mask"))
-        #frame = get_video()
+
         depth = get_depth()
-
-        # Blur frame and convert to HSV color space
-        # blurred = cv.GaussianBlur(frame, (11, 11), 0)
-        # hsv = cv.cvtColor(blurred, cv.COLOR_BGR2HSV)
-        # mask = cv.inRange(hsv, orangeLower, orangeUpper)
-        # mask = cv.erode(mask, None, iterations=2)
-        # mask = cv.dilate(mask, None, iterations=2)
-
-        #
-        # cv.imshow('RGB image', frame)
-        # cv.imshow('mask', mask)
-        # display depth image
-        # cv.line(depthImage, (40, 0), (40, 480), color=(0, 0, 255), thickness=2)
-        # cv.line(depthImage, (600, 0), (600, 480), color=(0, 0, 255), thickness=2)
-        # cv.line(depthImage, (0, 60), (640, 60), color=(0, 0, 255), thickness=2)
-        # cv.line(depthImage, (0, 440), (640, 440), color=(0, 0, 255), thickness=2)
-        # cv.imshow('Depth image', depthImage)
-
-        # crop_frame = frame[60:480, 40:600]
-        # depth = depth[60:480, 40:600]
-        #depth = cv.GaussianBlur(depth, (11, 11), 0)
-        # depth = cv.erode(depth, None, iterations=2)
-        # depth = cv.dilate(depth, None, iterations=2)
+        frame = get_video()
 
         # apply background substraction
         fgmask = fgbg.apply(depth)
@@ -106,6 +73,8 @@ if __name__ == "__main__":
             # draw bounding box
             #     cv.rectangle(depth, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv.circle(depth, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+            cv.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+
 
             print("depth:", depth[center[1], center[0]])
 
@@ -113,6 +82,15 @@ if __name__ == "__main__":
         # cv.imshow('crop', crop_frame)
         cv.imshow('depth', depthImage)
         cv.imshow('Foreground & Background Mask', fgmask)
+
+        depthImage = cv.cvtColor(depthImage, cv.COLOR_GRAY2BGR)
+        fgmask = cv.cvtColor(fgmask, cv.COLOR_GRAY2BGR)
+        # frame = cv.cvtColor(frame, cv.COLOR_2BGR)
+
+
+        # out.write(depthImage)
+        # out2.write(fgmask)
+        # out3.write(frame)
 
         # quit program when 'esc' key is pressed
         k = cv.waitKey(1) & 0xFF
@@ -122,4 +100,9 @@ if __name__ == "__main__":
             print("Capturing image...")
             cv.imwrite("testImage.jpg", frame)
 
+
 cv.destroyAllWindows()
+out.release()
+out2.release()
+out3.release()
+

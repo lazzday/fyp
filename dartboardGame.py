@@ -1,8 +1,13 @@
+'''
+Simple dartboard style game to demonstrate the accuracy of the projectile detector.
+Receives the expected point of impact via multiprocessing queue as soon as it is available,
+then displays its position relative to the dartboard.
+'''
+
 import pygame
 import os
 import multiprocessing
 import numpy as np
-
 
 class DartboardGame(multiprocessing.Process):
     WHITE = (255, 255, 255)
@@ -24,7 +29,6 @@ class DartboardGame(multiprocessing.Process):
         self.FPS = 100
 
         self.projectile_detector_ready = False
-        # self.point_of_impact_coords = tuple()
         self.projectile_detected = False
 
         self.impact_points = list()
@@ -34,16 +38,13 @@ class DartboardGame(multiprocessing.Process):
 
     def on_init(self):
         pygame.init()
-        # self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._display_surf = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
-
-        # self._running = True
 
         current_path = os.path.dirname(__file__)
         images_folder = os.path.join(current_path, "images")
 
-        self.bg = pygame.image.load(os.path.join(images_folder, 'background1.png'))
-        self.bg = pygame.transform.scale(self.bg, self.size)
+        # self.bg = pygame.image.load(os.path.join(images_folder, 'background1.png'))
+        # self.bg = pygame.transform.scale(self.bg, self.size)
         self.impact_x = pygame.image.load(os.path.join(images_folder, 'x.png'))
         self.impact_x = pygame.transform.scale(self.impact_x, (100, 100))
 
@@ -122,6 +123,7 @@ class DartboardGame(multiprocessing.Process):
         return
 
     def draw_target(self):
+        # Function to draw the dartboard target
         self._display_surf.fill(self.WHITE)
         center = (int(self.width / 2), int(self.height / 2))
 
@@ -151,6 +153,7 @@ class DartboardGame(multiprocessing.Process):
         self._display_surf.blit(text_20, text_20_rect)
 
     def convert_distance_to_coords(self, point):
+        #  Function to convert the point of impact from real world measurements (mm) to pixel coordinates
         [x, y] = point
         x_coord = np.interp(x, [-self.SCREEN_WIDTH / 2, self.SCREEN_WIDTH / 2], [0, self.width])
         y_coord = np.interp(y, [-self.SCREEN_HEIGHT / 2, self.SCREEN_HEIGHT / 2], [0, self.height])
@@ -159,6 +162,7 @@ class DartboardGame(multiprocessing.Process):
         return point_of_impact_coords
 
     def calculate_score(self, point):
+        # Function to calculate the current "Score", from where the projectile impacts the target
         (x, y) = point
         center = (center_x, center_y) = (self.width/2, self.height/2)
         if (x - center_x)**2 + (y - center_y)**2 < self.radius_100**2:
@@ -171,6 +175,7 @@ class DartboardGame(multiprocessing.Process):
             self.score += 20
 
     def draw_score(self):
+        # Function to draw then current score, the total attempts and the velocity of the previous throw.
         font = pygame.font.SysFont("courier", 28)
         score_text = font.render("Score: {}".format(self.score), True, self.BLACK)
         self._display_surf.blit(score_text, (self.width - 240, 20))
@@ -183,11 +188,13 @@ class DartboardGame(multiprocessing.Process):
         self._display_surf.blit(velocity_text, (20, self.height-40))
 
     def draw_impact_points(self):
+        # Function to draw an 'X' at the calculated point of impact.
         for point in self.impact_points:
             (x, y) = point
             self._display_surf.blit(self.impact_x, (x-self.impact_x.get_width() // 2, y-self.impact_x.get_height() // 2))
 
     def draw_plot(self):
+        # Function to draw the 3d plot of the last throw's trajectory on the display
         if self.attempts > 0:
             current_path = os.path.dirname(__file__)
             plots_folder = os.path.join(current_path, "images/plots")

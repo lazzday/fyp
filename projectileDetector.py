@@ -9,7 +9,6 @@ from flight import RecordedPoint, RecordedFlight
 from utils import FrameSave
 import multiprocessing
 
-
 class ProjectileDetector(multiprocessing.Process):
 
     def __init__(self, the_state, queue,
@@ -30,11 +29,8 @@ class ProjectileDetector(multiprocessing.Process):
     # function to get RGB image from kinect
     def get_video(self):
         array, _ = freenect.sync_get_video()
-        # Crop to usable space:
-        array = array[60:480, 40:600]
         array = cv.cvtColor(array, cv.COLOR_RGB2BGR)
-        latency_start = start_time - get_time_millis()
-        return array, latency_start
+        return array
 
     # function to get depth image from kinect
     def get_depth(self):
@@ -84,7 +80,12 @@ class ProjectileDetector(multiprocessing.Process):
                 self.queue.put("Ready")
 
         throws_detected = 0
-        # while throws_detected < 3:
+
+        projectile_timeout = 1000
+        timeout_timer = 0
+
+
+
         while True:
             projectile_in_view = False
             flight_recorded = False
@@ -118,9 +119,13 @@ class ProjectileDetector(multiprocessing.Process):
                 ballCenter = None
 
                 if look_for_contours == True:
+                    # Projectile detected
                     for c in contours:
                         if cv.contourArea(c) < 1000:
                             continue
+
+                        # if time < timeout
+
                         ((x, y), radius) = cv.minEnclosingCircle(c)
                         M = cv.moments(c)
                         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
@@ -132,6 +137,7 @@ class ProjectileDetector(multiprocessing.Process):
                             projectile_in_view = False
                             continue
                         elif depthValue != 0:
+                            # record point
                             point_time = self.get_time_millis() - start_time
                             point = RecordedPoint(center[0], center[1], depthValue, point_time)
                             point.relate_to_target(self.CAMERA_HEIGHT,
@@ -145,6 +151,9 @@ class ProjectileDetector(multiprocessing.Process):
                             images_to_save.append(depth.astype(np.uint8))
                             mask_frames.append(fgmask)
                             frame_count += 1
+
+                            timeout_timer = self.get_time_millis()
+
 
                 # cv.imshow('RGB image', frame)
                 # display depth image
@@ -175,7 +184,5 @@ class ProjectileDetector(multiprocessing.Process):
             k = cv.waitKey(1) & 0xFF
             if k == ord("q"):
                 break
-        # print("Average Latency between RGB - Depth: ", np.mean(avg_latency))
-    #    print("Average Horizontal Velocity:", np.mean(recorded_flight.h_velocity_at_points))
 
         cv.destroyAllWindows()

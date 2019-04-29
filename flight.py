@@ -9,11 +9,14 @@ Created on Sat Mar 23 19:05:09 2019
 import math
 import os
 import time
+import pickle
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
+
+
 from mpl_toolkits.mplot3d import axes3d
 
 
@@ -114,9 +117,9 @@ class RecordedFlight:
         return [x_at_target, curve_function(x_at_target) - y_at_target, (m * x_at_target) + b, avg_vel]
 
     def plot(self):
+        # Function to plot the flight on a 3D graph
         matplotlib.use('Agg')
 
-        # Function to plot the flight on a 3D graph
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -128,6 +131,7 @@ class RecordedFlight:
         predicted_x_val = [p[0] for p in self.trajectory]
         predicted_y_val = [p[1] for p in self.trajectory]
         predicted_z_val = [p[2] for p in self.trajectory]
+
         ax.scatter(predicted_x_val, predicted_y_val, predicted_z_val, label="Predicted")
 
         # ax.plot([0.], [self.], [0.], marker='X', markersize=10)
@@ -151,8 +155,10 @@ class RecordedFlight:
         ax.view_init(azim=270, elev=-60)
         # plt.legend(loc='upper left')
         # plt.show()
+        pickle.dump(ax, open("plot{}.pickle".format(self.plot_number), "wb"))
         folder = "images/plots"
         plot_name = "throw{}.png".format(self.plot_number)
+
         self.plot_number += 1
         fig.savefig(os.path.join(folder, plot_name), transparent=True)
 
